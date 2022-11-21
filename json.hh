@@ -10,13 +10,14 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <stack>
 
 
 namespace xushun {
 
     class json {
-        public:
+
+
+        public: // enums
             enum jsonType { 
                 JSON_NULL, 
                 JSON_FALSE, 
@@ -26,7 +27,6 @@ namespace xushun {
                 JSON_ARRAY, 
                 JSON_OBJECT
             };
-        private:
             enum jsonError {
                 JSON_PARSE_OK = 0,                      // 成功解析
                 JSON_PARSE_EXPECT_VALUE,                // 只有空白字符
@@ -43,45 +43,59 @@ namespace xushun {
                 JSON_PARSE_MISS_COLON,                  // 冒号丢失
                 JSON_PARSE_MISS_COMMA_OR_CURLY_BRACKET  // 逗号或大括号丢失
             };
-        private:
-            std::string key_;
+
+
+
+
+        private: // dumper
+            std::string dumpedString_;
+            void dumpValue(std::string& dumpedString);
+            void dumpString(std::string& dumpedString, const std::string& s);
+        public:
+            std::string dump();
+
+
+
+
+        private: // parser
+            struct context {
+                std::string unparsed;
+                int idx;
+                std::vector<char> stack;
+            } parseContext_;
+        public:
+            jsonError parse(std::string& jsonString);
+
+
+
+
+        private: // json value
             jsonType type_;
 
             std::map<std::string, json> object_; // JSON_OBJECT
             std::vector<json> array_;  // JSON_ARRAY
             std::string string_;       // JSON_STRING
             double number_;            // JSON_NUMBER
-        private:
-            void contextPush(std::string& context, std::string&& s);
-            void contextPop(std::string& context, int n);
-            void dumpValue(std::string& context);
-            void dumpString(std::string& context, std::string& s);
         public:
             json();
             json(const json& src);
             json& operator=(const json& src);
 
-            void parse(std::string jsonString);
-            std::string dump();
-
             jsonType getType();
             bool isEqual(const json& rhs);
-
             void setNull();
             
             // bool
             bool getBoolean();
             void setBoolean(bool b);
-
             // number
             double getNumber();
             void setNumber(double n);
-
             // string
             std::string getString();
             void setString(std::string s);
-
             // array
+            void setArray();
             int getArraySize();
             void clearArray();
             json& getArrayElement(int index);
@@ -89,7 +103,6 @@ namespace xushun {
             void popbackArray();
             void insertArrayElement(int index, json& j);
             void eraseArrayElement(int index, int count);
-
             // object
             void setObject();
             int getObjectSize();
@@ -101,10 +114,12 @@ namespace xushun {
     };
 
 
+
+
+
+
+
 }
-
-
-
 
 
 #endif // __JSON_HH_

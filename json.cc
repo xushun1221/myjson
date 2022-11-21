@@ -6,21 +6,17 @@
 */
 
 #include "json.hh"
-
-
-
+#include <cerrno>   // strtod()
+#include <cmath>    // HUGE_VAL
 
 using json = xushun::json;
-
 
 
 
 json::json() {
     type_ = JSON_NULL;
 }
-
 json::json(const json& src) {
-    key_ = src.key_;
     type_ = src.type_;
     switch (type_) {
         case JSON_OBJECT:
@@ -34,12 +30,10 @@ json::json(const json& src) {
         default: break;
     }
 }
-
 json& json::operator=(const json& src) {
     if (&src == this) {
         return * this;
     }
-    key_ = src.key_;
     type_ = src.type_;
     object_ = src.object_;
     array_ = src.array_;
@@ -49,83 +43,73 @@ json& json::operator=(const json& src) {
 }
 
 
-// to do
-void json::parse(std::string jsonString) {
-
-}
 
 
-void json::contextPush(std::string& context, std::string&& s) {
-    context += s;
-}
-void json::contextPop(std::string& context, int n) {
-    while (n --) { context.pop_back(); }
-}
-void json::dumpString(std::string& context, std::string& s) {
+
+void json::dumpString(std::string& dumpedString, const std::string& s) {
     const char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-    context += '\"';
+    dumpedString += '\"';
     for (unsigned char ch : s) {
         switch (ch) {
-            case '\"': context += "\\\"";   break;
-            case '\\': context += "\\\\";   break;
-            case '\b': context += "\\b";    break;
-            case '\f': context += "\\f";    break;
-            case '\n': context += "\\n";    break;
-            case '\r': context += "\\r";    break;
-            case '\t': context += "\\t";    break;
+            case '\"': dumpedString += "\\\"";   break;
+            case '\\': dumpedString += "\\\\";   break;
+            case '\b': dumpedString += "\\b";    break;
+            case '\f': dumpedString += "\\f";    break;
+            case '\n': dumpedString += "\\n";    break;
+            case '\r': dumpedString += "\\r";    break;
+            case '\t': dumpedString += "\\t";    break;
             default:
                 if (ch < 0x20) {
-                    context += "\\u00";
-                    context += hexDigits[ch >> 4];
-                    context += hexDigits[ch & 15];
+                    dumpedString += "\\u00";
+                    dumpedString += hexDigits[ch >> 4];
+                    dumpedString += hexDigits[ch & 15];
                 } else {
-                    context += ch;
+                    dumpedString += ch;
                 }
         }
     }
-    context += '\"';
+    dumpedString += '\"';
 }
-void json::dumpValue(std::string& context) {
+void json::dumpValue(std::string& dumpedString) {
     switch (type_) {
-        case JSON_NULL:   contextPush(context, "null");  break;
-        case JSON_TRUE:   contextPush(context, "true");  break;
-        case JSON_FALSE:  contextPush(context, "false"); break;
+        case JSON_NULL:     dumpedString += "null";      break;
+        case JSON_TRUE:     dumpedString += "true";      break;
+        case JSON_FALSE:    dumpedString += "false";     break;
         case JSON_NUMBER:
             char num[32];
             sprintf(num, "%.17g", number_);
-            contextPush(context, std::string(num));      break;
-        case JSON_STRING: dumpString(context, string_);  break;
+            dumpedString += std::string(num);            break;
+        case JSON_STRING: dumpString(dumpedString, string_);           
+                                                         break;
         case JSON_ARRAY:
-            contextPush(context, "[");
+            dumpedString += "[";
             for (int i = 0; i < array_.size(); ++ i) {
-                if (i > 0) { contextPush(context, ","); }
-                array_[i].dumpValue(context);
+                if (i > 0) { dumpedString += ","; }
+                array_[i].dumpValue(dumpedString);
             }
-            contextPush(context, "]");                   break;
+            dumpedString += "]";                         break;
         case JSON_OBJECT:
-            contextPush(context, "{");
+            dumpedString += "{";
             for (auto itr = object_.begin(); itr != object_.end(); ++ itr) {
-                if (itr != object_.begin()) { contextPush(context, ","); }
-                dumpString(context, itr->second.key_);
-                contextPush(context, ":");
-                itr->second.dumpValue(context);
+                if (itr != object_.begin()) { dumpedString += ","; }
+                dumpString(dumpedString, itr->first);
+                dumpedString += ":";
+                itr->second.dumpValue(dumpedString);
             }
-            contextPush(context, "}");                   break;
+            dumpedString += "}";                         break;
         default: 
-            break;
+                                                         break;
     }
 }
 std::string json::dump() {
-    std::string context;
-    dumpValue(context);
-    return context;
+    dumpValue(dumpedString_);
+    return dumpedString_;
 }
 
 
 json::jsonType json::getType() {
     return type_;
 }
-
 bool json::isEqual(const json& rhs) {
     if (type_ != rhs.type_) { return false; }
     switch (type_) {
@@ -150,23 +134,17 @@ bool json::isEqual(const json& rhs) {
             return true;
     }
 }
-
-
 void json::setNull() {
     type_ = JSON_NULL;
-    key_.clear();
     object_.clear();
     array_.clear();
     string_.clear();
 }
 
-
 // boolean
-
 bool json::getBoolean() {
     return type_ == JSON_TRUE;
 }
-
 void json::setBoolean(bool b) {
     setNull();
     type_ = b ? JSON_TRUE : JSON_FALSE;
@@ -174,11 +152,9 @@ void json::setBoolean(bool b) {
 
 
 // number
-
 double json::getNumber() {
     return number_;
 }
-
 void json::setNumber(double n) {
     setNull();
     type_ = JSON_NUMBER;
@@ -186,11 +162,9 @@ void json::setNumber(double n) {
 }
 
 // string
-
 std::string json::getString() {
     return string_;
 }
-
 void json::setString(std::string s) {
     setNull();
     type_ = JSON_STRING;
@@ -199,7 +173,10 @@ void json::setString(std::string s) {
 
 
 // array
-
+void json::setArray() {
+    setNull();
+    type_ = JSON_ARRAY;
+}
 int json::getArraySize() {
     return array_.size();
 }
@@ -252,37 +229,44 @@ void json::insertObjectElement(std::string key, json& j) {
 
 
 
-#include <iostream>
+// #include <iostream>
 
-// test
-int main() {
+// // test
+// int main() {
 
-    json j;
+//     json j;
 
-    json jtrue;
-    jtrue.setBoolean(true);
+//     json jtrue;
+//     jtrue.setBoolean(true);
     
-    json jfalse;
-    jfalse.setBoolean(false);
+//     json jfalse;
+//     jfalse.setBoolean(false);
 
-    json jstr;
-    jstr.setString("testString");
+//     json jstr;
+//     jstr.setString("testString");
 
-    json jarr;
-    jarr.pushbackArray(jtrue);
-    jarr.pushbackArray(jfalse);
+//     json jnum;
+//     jnum.setNumber(12.3424446453766);
+
+//     json jarr;
+//     jarr.setArray();
+//     jarr.pushbackArray(jtrue);
+//     jarr.pushbackArray(jfalse);
     
-    j.setObject();
-    j.insertObjectElement("jtrue", jtrue);
-    j.insertObjectElement("jfalse", jfalse);
-    j.insertObjectElement("jstr", jstr);
-    j.insertObjectElement("jarr", jarr);
+//     json jobj;
+//     jobj.setObject();
+
+//     j.setObject();
+//     j.insertObjectElement("jtrue", jtrue);
+//     j.insertObjectElement("jfalse", jfalse);
+//     j.insertObjectElement("jstr", jstr);
+//     j.insertObjectElement("jarr", jarr);
+//     j.insertObjectElement("jnum", jnum);
+//     j.insertObjectElement("jobj", jobj);
 
 
 
+//     std::cout << j.dump() << std::endl;
 
-
-    std::cout << j.dump() << std::endl;
-
-    return 0;
-}
+//     return 0;
+// }
