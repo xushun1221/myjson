@@ -49,6 +49,7 @@ namespace xushun {
 
         private: // dumper
             std::string dumpedString_;
+
             void dumpValue(std::string& dumpedString);
             void dumpString(std::string& dumpedString, const std::string& s);
         public:
@@ -58,11 +59,22 @@ namespace xushun {
 
 
         private: // parser
-            struct context {
+            struct parseContext {
                 std::string unparsed;
                 int idx;
                 std::vector<char> stack;
             } parseContext_;
+
+            void parseWhitespace(parseContext& context);
+            jsonError parseLiteral(parseContext& context, std::string&& literal, jsonType type);
+            jsonError parseNumber(parseContext& context);
+            bool parseHex4(parseContext& context, unsigned& u);
+            void encodeUtf8(parseContext& context, unsigned u);
+            jsonError parseStringRaw(parseContext& context, std::string& dst);
+            jsonError parseString(parseContext& context);
+            jsonError parseArray(parseContext& context);
+            jsonError parseObject(parseContext& context);
+            jsonError parseValue(parseContext& context);
         public:
             jsonError parse(std::string& jsonString);
 
