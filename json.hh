@@ -7,6 +7,7 @@
 #ifndef  __JSON_HH_
 #define  __JSON_HH_
 
+
 #include <vector>
 #include <string>
 #include <map>
@@ -59,11 +60,23 @@ namespace xushun {
 
 
         private: // parser
-            struct parseContext {
-                std::string unparsed;
-                int idx;
-                std::vector<char> stack;
-            } parseContext_;
+            class parseContext {
+                private:
+                    std::string unparsed_;
+                    int idx_;
+                    std::string stack_;
+                public:
+                    parseContext(std::string& jsonString);
+                    int idx();
+                    void resetIdx(int idx);
+                    char cur();
+                    char curPass();
+                    std::string subUnparsed(int startIdx, int len);
+                    void stackPushCh(char ch);
+                    void stackPushStr(std::string str);
+                    std::string stackPop(int len);
+                    int stackSize();
+            };
 
             void parseWhitespace(parseContext& context);
             jsonError parseLiteral(parseContext& context, std::string&& literal, jsonType type);
@@ -83,7 +96,8 @@ namespace xushun {
 
         private: // json value
             jsonType type_;
-
+            std::string key_;
+            
             std::map<std::string, json> object_; // JSON_OBJECT
             std::vector<json> array_;  // JSON_ARRAY
             std::string string_;       // JSON_STRING
@@ -95,6 +109,7 @@ namespace xushun {
 
             jsonType getType();
             bool isEqual(const json& rhs);
+            bool operator==(const json& rhs);
             void setNull();
             
             // bool

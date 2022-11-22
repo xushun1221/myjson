@@ -18,6 +18,7 @@ json::json() {
 }
 json::json(const json& src) {
     type_ = src.type_;
+    key_ = src.key_;
     switch (type_) {
         case JSON_OBJECT:
             object_ = src.object_; break;
@@ -35,11 +36,49 @@ json& json::operator=(const json& src) {
         return * this;
     }
     type_ = src.type_;
+    key_ = src.key_;
     object_ = src.object_;
     array_ = src.array_;
     string_ = src.string_;
     number_ = src.number_;
     return *this;
+}
+
+
+
+
+json::parseContext::parseContext(std::string& jsonString) {
+    unparsed_ = jsonString;
+    idx_ = 0;
+}
+int json::parseContext::idx() {
+    return idx_;
+}
+void json::parseContext::resetIdx(int idx) {
+    idx_ = idx;
+}
+char json::parseContext::cur() {
+    return unparsed_[idx_];
+}
+char json::parseContext::curPass() {
+    return unparsed_[idx_ ++];
+}
+std::string json::parseContext::subUnparsed(int startIdx, int len) {
+    return unparsed_.substr(startIdx, len);
+}
+void json::parseContext::stackPushCh(char ch) {
+    stack_ += ch;
+}
+void json::parseContext::stackPushStr(std::string str) {
+    stack_ += str;
+}
+std::string json::parseContext::stackPop(int len) {
+    std::string ret = stack_.substr(stack_.size() - len, len);
+    stack_.resize(stack_.size() - len);
+    return ret;
+}
+int json::parseContext::stackSize() {
+    return stack_.size();
 }
 
 
@@ -51,350 +90,259 @@ json& json::operator=(const json& src) {
 
 
 void json::parseWhitespace(parseContext& context) {
-    const char* p = c->json;
-    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
-        ++ p;
+    char ch = context.cur();
+    while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+        ch = context.curPass();
     }
-    c->json = p;
 }
 json::jsonError json::parseLiteral(parseContext& context, std::string&& literal, jsonType type) {
-    EXPECT(c, literal[0]);
-    int i = 1;
-    while (literal[i] != '\0') {
-        if (literal[i] != *c->json) {
+    for (char ch : literal) {
+        if (ch != context.curPass()) {
             return JSON_PARSE_INVALID_VALUE;
-        } else {
-            c->json ++;
-            i ++;
         }
     }
-    v->type = type;
+    type_ = type;
     return JSON_PARSE_OK;
 }
+static bool isDigit(char ch) { return ch >= '0' && ch <= '9'; }
+static bool isDigit1To9(char ch) { return ch >='1' && ch <= '9'; }
 json::jsonError json::parseNumber(parseContext& context) {
-    const char* p = c->json;
-    if (*p == '-') {
-        p ++;
-    }
-    if (*p == '0') {
-        p ++;
+    int startIdx = context.idx();
+    if (context.cur() == '-') { context.curPass(); }
+    if (context.cur() == '0') { 
+        context.curPass();
     } else {
-        if (!ISDIGIT_1TO9(*p)) {
-            return JSON_PARSE_INVALID_VALUE;
-        }
-        for (p ++; ISDIGIT(*p); p ++);
+        if (!isDigit1To9(context.cur())) { return JSON_PARSE_INVALID_VALUE; }
+        while (isDigit(context.curPass())) { }
     }
-    if (*p == '.') {
-        p ++;
-        if (!ISDIGIT(*p)) {
-            return JSON_PARSE_INVALID_VALUE;
-        }
-        for (p ++; ISDIGIT(*p); p ++);
+    if (context.cur() == '.') {
+        context.curPass();
+        if (!isDigit(context.cur())) { return JSON_PARSE_INVALID_VALUE; }
+        while (isDigit(context.curPass())) { }
     }
-    if (*p == 'e' || *p == 'E') {
-        p ++;
-        if (*p == '+' || *p == '-') {
-            p ++;
+    if (context.cur() == 'e' || context.cur() == 'E') {
+        context.curPass();
+        if (context.cur() == '+' || context.cur() == '-') {
+            context.curPass();
         }
-        if (!ISDIGIT(*p)) {
-            return JSON_PARSE_INVALID_VALUE;
-        }
-        for (p ++; ISDIGIT(*p); p ++);
+        if (!isDigit(context.cur())) { return JSON_PARSE_INVALID_VALUE; }
+        while (isDigit(context.curPass())) { }
     }
     errno = 0;
-    v->u.n = strtod(c->json, NULL);
-    if (errno == ERANGE && (v->u.n == HUGE_VAL || v->u.n == -HUGE_VAL)) {
+    number_ = strtod(context.subUnparsed(startIdx, context.cur() - startIdx).c_str(), nullptr);
+    if (errno == ERANGE && (number_ == HUGE_VAL || number_ == -HUGE_VAL)) {
         return JSON_PARSE_NUMBER_TOO_BIG;
     }
-    v->type = JSON_NUMBER;
-    c->json = p;
+    type_ = JSON_NUMBER;
     return JSON_PARSE_OK;
 }
 bool json::parseHex4(parseContext& context, unsigned& u) {
-    *u = 0;
+    u = 0;
     for (int i = 0; i < 4; i++) {
-        char ch = *p++;
-        *u <<= 4;
-        if      (ch >= '0' && ch <= '9')  *u |= ch - '0';
-        else if (ch >= 'A' && ch <= 'F')  *u |= ch - ('A' - 10);
-        else if (ch >= 'a' && ch <= 'f')  *u |= ch - ('a' - 10);
-        else return NULL;
+        char ch = context.curPass();
+        u <<= 4;
+        if      (ch >= '0' && ch <= '9')  { u |= ch - '0';        }
+        else if (ch >= 'A' && ch <= 'F')  { u |= ch - ('A' - 10); }
+        else if (ch >= 'a' && ch <= 'f')  { u |= ch - ('a' - 10); }
+        else { return false; }
     }
-    return p;
+    return true;
 }
 void json::encodeUtf8(parseContext& context, unsigned u) {
     if (u < 0x0080) {
-        PUTC(c, 0x00 | (u & 0x7f));
+        context.stackPushCh(0x00 | (u & 0x7f));
     } else if (u >= 0x0080 && u < 0x0800) {
-        PUTC(c, 0xc0 | ((u >> 6 ) & 0x1f));
-        PUTC(c, 0x80 | ((u      ) & 0x3f));
+        context.stackPushCh(0xc0 | ((u >> 6 ) & 0x1f));
+        context.stackPushCh(0x80 | ((u      ) & 0x3f));
     } else if (u >= 0x0800 && u < 0x10000) {
-        PUTC(c, 0xe0 | ((u >> 12) & 0xff));
-        PUTC(c, 0x80 | ((u >> 6 ) & 0x3f));
-        PUTC(c, 0x80 | ((u      ) & 0x3f));
+        context.stackPushCh(0xe0 | ((u >> 12) & 0xff));
+        context.stackPushCh(0x80 | ((u >> 6 ) & 0x3f));
+        context.stackPushCh(0x80 | ((u      ) & 0x3f));
     } else if (u >= 0x10000 && u <= 0x10ffff) {
-        PUTC(c, 0xf0 | ((u >> 18) & 0x07));
-        PUTC(c, 0x80 | ((u >> 12) & 0x3f));
-        PUTC(c, 0x80 | ((u >> 6 ) & 0x3f));
-        PUTC(c, 0x80 | ((u      ) & 0x3f));
+        context.stackPushCh(0xf0 | ((u >> 18) & 0x07));
+        context.stackPushCh(0x80 | ((u >> 12) & 0x3f));
+        context.stackPushCh(0x80 | ((u >> 6 ) & 0x3f));
+        context.stackPushCh(0x80 | ((u      ) & 0x3f));
     }
 }
-#define STRING_ERROR(ret) do { c->top = head; return ret; } while(0)
 json::jsonError json::parseStringRaw(parseContext& context, std::string& dst) {
-    size_t head = c->top;
-    EXPECT(c, '\"');
-    const char* p = c->json;
+    int startIdx = context.idx();
+    int startStackSize = context.stackSize();
+    context.curPass(); // '\"'
     for (;;) {
-        char ch = *p ++;
+        char ch = context.curPass();
         switch (ch) {
             case '\"': {
-                *len = c->top - head; 
-                *str = json_context_pop(c, *len);
-                c->json = p;
+                int len = context.stackSize() - startStackSize;
+                dst = context.stackPop(len);
                 return JSON_PARSE_OK;
             }
-            case '\0': STRING_ERROR(JSON_PARSE_MISS_QUOTATION_MARK);
+            case '\0': context.resetIdx(startIdx); return JSON_PARSE_MISS_QUOTATION_MARK;
             case '\\': {
-                switch (*p ++) {
-                    case '\"': PUTC(c, '\"'); break;
-                    case '\\': PUTC(c, '\\'); break;
-                    case '/':  PUTC(c, '/');  break;
-                    case 'b':  PUTC(c, '\b'); break;
-                    case 'f':  PUTC(c, '\f'); break;
-                    case 'n':  PUTC(c, '\n'); break;
-                    case 'r':  PUTC(c, '\r'); break;
-                    case 't':  PUTC(c, '\t'); break;
+                switch (context.curPass()) {
+                    case '\"': context.stackPushCh('\"'); break;
+                    case '\\': context.stackPushCh('\\'); break;
+                    case '/':  context.stackPushCh('/');  break;
+                    case 'b':  context.stackPushCh('\b'); break;
+                    case 'f':  context.stackPushCh('\f'); break;
+                    case 'n':  context.stackPushCh('\n'); break;
+                    case 'r':  context.stackPushCh('\r'); break;
+                    case 't':  context.stackPushCh('\t'); break;
                     case 'u': {
                         unsigned u;
-                        if (!(p = json_parse_hex4(p, &u))) {
-                            STRING_ERROR(JSON_PARSE_INVALID_UNICODE_HEX);
-                        }                       
+                        if (parseHex4(context, u) == false) {
+                            context.resetIdx(startIdx); 
+                            return JSON_PARSE_INVALID_UNICODE_HEX;
+                        }                     
                         if (u >= 0xd800 && u <= 0xdbff) {
-                            if (*p ++ != '\\' || *p ++ != 'u') {
-                                STRING_ERROR(JSON_PARSE_INVALID_UNICODE_SURROGATE);
+                            if (context.curPass() != '\\' || context.curPass() != 'u') {
+                                context.resetIdx(startIdx); 
+                                return JSON_PARSE_INVALID_UNICODE_SURROGATE;
                             }
                             unsigned lowu;
-                            if (!(p = json_parse_hex4(p, &lowu))) {                              
-                                STRING_ERROR(JSON_PARSE_INVALID_UNICODE_HEX);
-                            }
+                            if (parseHex4(context, lowu) == false) {
+                                context.resetIdx(startIdx); 
+                                return JSON_PARSE_INVALID_UNICODE_HEX;
+                            } 
                             if (!(lowu >= 0xdc00 && lowu <= 0xdfff)) {                                
-                                STRING_ERROR(JSON_PARSE_INVALID_UNICODE_SURROGATE);
+                                context.resetIdx(startIdx); 
+                                return JSON_PARSE_INVALID_UNICODE_SURROGATE;
                             }
                             u = 0x10000 + (u - 0xd800) * 0x400 + (lowu - 0xdc00);
                         }
-                        json_encode_utf8(c, u);
+                        encodeUtf8(context, u);
                         break;
                     }
-                    default: STRING_ERROR(JSON_PARSE_INVALID_STRING_ESCAPE);
+                    default: context.resetIdx(startIdx); return JSON_PARSE_INVALID_STRING_ESCAPE;
                 }
                 break;
             }
             default: { 
                 if ((unsigned char)ch < 0x20) {
-                    STRING_ERROR(JSON_PARSE_INVALID_STRING_CHAR);
+                    context.resetIdx(startIdx);
+                    return JSON_PARSE_INVALID_STRING_CHAR;
                 }
-                PUTC(c, ch);
+                context.stackPushCh(ch);
             }
         }
     }
 }
 json::jsonError json::parseString(parseContext& context) {
-    char* s;
-    size_t len;
-    int ret = json_parse_string_raw(c, &s, &len);
+    std::string s;
+    jsonError ret = parseStringRaw(context, s);
     if (ret == JSON_PARSE_OK) {
-        json_set_string(v, s, len);
+        setString(s);
     }
     return ret;
 }
 json::jsonError json::parseArray(parseContext& context) {
-    EXPECT(c, '[');
-    json_parse_whitespace(c);
-    if (*c->json == ']') {
-        c->json ++;
-        json_set_array(v, 0);
+    context.curPass(); // '['
+    parseWhitespace(context);
+    if (context.cur() == ']') {
+        context.curPass();
+        setArray();
         return JSON_PARSE_OK;
     }
-    int ret;
-    size_t size = 0;
+    jsonError ret;
     for (;;) {
-        json_value e;
-        json_init(&e);
-        ret = json_parse_value(c, &e);
+        json elem;
+        elem.setNull();
+        ret = elem.parseValue(context);
         if (ret != JSON_PARSE_OK) {
             break;
         }
-        memcpy(json_context_push(c, sizeof(json_value)), &e, sizeof(json_value));
-        size ++;
-        json_parse_whitespace(c);
-        if (*c->json == ',') {
-            c->json ++;
-            json_parse_whitespace(c);
-        } else if (*c->json == ']') {
-            c->json ++;
-            json_set_array(v, size);
-            memcpy(v->u.a.e, json_context_pop(c, size * sizeof(json_value)), size * sizeof(json_value));
-            v->u.a.size = size;
+        pushbackArray(elem);
+        parseWhitespace(context);
+        if (context.cur() == ',') {
+            context.curPass();
+            parseWhitespace(context);
+        } else if (context.cur() == ']') {
+            context.curPass();
+            setArray();
             return JSON_PARSE_OK;
         } else {
             ret = JSON_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
             break;
         }
     }
-    for (int i = 0; i < size; i ++) {
-        json_free((json_value*)json_context_pop(c, sizeof(json_value)));
-    }
     return ret;
 }
 json::jsonError json::parseObject(parseContext& context) {
-    EXPECT(c, '{');
-    json_parse_whitespace(c);
-    if (*c->json == '}') {
-        c->json ++;
-        json_set_object(v, 0);
+    context.curPass(); // '{'
+    parseWhitespace(context);
+    if (context.cur() == '}') {
+        context.curPass();
+        setObject();
         return JSON_PARSE_OK;
     }
-    int ret;
-    size_t size = 0;
-    json_member m;
-    m.k = NULL;
+    jsonError ret;
     for (;;) {
-        json_init(&m.v);
-        char* str;
-        if (*c->json != '\"') {
+        json elem;
+        elem.setNull();
+        if (context.cur() != '\"') {
             ret = JSON_PARSE_MISS_KEY;
             break;
         }
-        ret = json_parse_string_raw(c, &str, &m.klen);
+        std::string key;
+        ret = parseStringRaw(context, key);
         if (ret != JSON_PARSE_OK) {
             break;
         }
-        memcpy(m.k = (char*)malloc(m.klen + 1), str, m.klen);
-        m.k[m.klen] = '\0';
-        json_parse_whitespace(c);
-        if (*c->json != ':') {
+        parseWhitespace(context);
+        if (context.cur() != ':') {
             ret = JSON_PARSE_MISS_COLON;
             break;
         }
-        c->json ++;
-        json_parse_whitespace(c);
-        ret = json_parse_value(c, &m.v);
+        context.curPass();
+        parseWhitespace(context);
+        ret = elem.parseValue(context);
         if (ret != JSON_PARSE_OK) {
             break;
         }
-        size ++;
-        memcpy(json_context_push(c, sizeof(json_member)), &m, sizeof(json_member));
-        m.k = NULL;
+        insertObjectElement(key, elem);
 
-        json_parse_whitespace(c);
-        if (*c->json == ',') {
-            c->json ++;
-            json_parse_whitespace(c);
-        } else if (*c->json == '}') {
-            c->json ++;
-            json_set_object(v, size);
-            memcpy(v->u.o.m, json_context_pop(c, size * sizeof(json_member)), size * sizeof(json_member));
-            v->u.o.size = size;
+        parseWhitespace(context);
+        if (context.cur() == ',') {
+            context.curPass();
+            parseWhitespace(context);
+        } else if (context.cur() == '}') {
+            context.curPass();
+            setObject();
             return JSON_PARSE_OK;
         } else {
             ret = JSON_PARSE_MISS_COMMA_OR_CURLY_BRACKET;
             break;
         }
     }
-    free(m.k);
-    for (int i = 0; i < size; i ++) {
-        json_member* m = (json_member*)json_context_pop(c, sizeof(json_member));
-        free(m->k);
-        json_free(&m->v);
-    }
-    v->type = JSON_NULL;
+    setNull();
     return ret;
 }
 json::jsonError json::parseValue(parseContext& context) {
-    switch (*c->json) {
-        case 'n': return json_parse_literal(c, v, "null", JSON_NULL);
-        case 't': return json_parse_literal(c, v, "true", JSON_TRUE);
-        case 'f': return json_parse_literal(c, v, "false", JSON_FALSE);
+    switch (context.cur()) {
+        case 'n':  return parseLiteral(context, "null",  JSON_NULL);
+        case 't':  return parseLiteral(context, "true",  JSON_TRUE);
+        case 'f':  return parseLiteral(context, "false", JSON_FALSE);
         case '\0': return JSON_PARSE_EXPECT_VALUE;
-        case '\"': return json_parse_string(c, v);
-        case '[': return json_parse_array(c, v);
-        case '{': return json_parse_object(c, v);
-        default: return json_parse_number(c, v);
+        case '\"': return parseString(context);
+        case '[':  return parseArray(context);
+        case '{':  return parseObject(context);
+        default:   return parseNumber(context);
     }
 }
 json::jsonError json::parse(std::string& jsonString) {
-    assert(v != NULL);
-    json_context c;
-    c.json = json;
-    c.stack = NULL;
-    c.size = c.top = 0;
-    json_init(v);
-    json_parse_whitespace(&c);
-    int ret = json_parse_value(&c, v);
+    parseContext context(jsonString);
+    setNull();
+    parseWhitespace(context);
+    jsonError ret = parseValue(context);
     if (ret == JSON_PARSE_OK) {
-        json_parse_whitespace(&c);
-        if (*c.json != '\0') {
-            v->type = JSON_NULL;
+        parseWhitespace(context);
+        if (context.idx() != jsonString.size()) {
+            setNull();
             return JSON_PARSE_ROOT_NOT_SINGULAR;
         }
     }
-    assert(c.top == 0);
-    free(c.stack);
     return ret;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -493,6 +441,9 @@ bool json::isEqual(const json& rhs) {
             return true;
     }
 }
+bool json::operator==(const json& rhs) {
+    return isEqual(rhs);
+}
 void json::setNull() {
     type_ = JSON_NULL;
     object_.clear();
@@ -588,44 +539,52 @@ void json::insertObjectElement(std::string key, json& j) {
 
 
 
-// #include <iostream>
+#include <iostream>
 
-// // test
-// int main() {
+// test
+int main() {
 
-//     json j;
+    json j;
 
-//     json jtrue;
-//     jtrue.setBoolean(true);
+    json jtrue;
+    jtrue.setBoolean(true);
     
-//     json jfalse;
-//     jfalse.setBoolean(false);
+    json jfalse;
+    jfalse.setBoolean(false);
 
-//     json jstr;
-//     jstr.setString("testString");
+    json jstr;
+    jstr.setString("testString");
 
-//     json jnum;
-//     jnum.setNumber(12.3424446453766);
+    json jnum;
+    jnum.setNumber(12.3424446453766);
 
-//     json jarr;
-//     jarr.setArray();
-//     jarr.pushbackArray(jtrue);
-//     jarr.pushbackArray(jfalse);
+    json jarr;
+    jarr.setArray();
+    jarr.pushbackArray(jtrue);
+    jarr.pushbackArray(jfalse);
     
-//     json jobj;
-//     jobj.setObject();
+    json jobj;
+    jobj.setObject();
 
-//     j.setObject();
-//     j.insertObjectElement("jtrue", jtrue);
-//     j.insertObjectElement("jfalse", jfalse);
-//     j.insertObjectElement("jstr", jstr);
-//     j.insertObjectElement("jarr", jarr);
-//     j.insertObjectElement("jnum", jnum);
-//     j.insertObjectElement("jobj", jobj);
+    j.setObject();
+    j.insertObjectElement("jtrue", jtrue);
+    j.insertObjectElement("jfalse", jfalse);
+    j.insertObjectElement("jstr", jstr);
+    j.insertObjectElement("jarr", jarr);
+    j.insertObjectElement("jnum", jnum);
+    j.insertObjectElement("jobj", jobj);
 
 
 
-//     std::cout << j.dump() << std::endl;
+    std::cout << j.dump() << std::endl;
 
-//     return 0;
-// }
+    std::string testString = "true";
+    std::string jsonString = j.dump();
+    json jparse;
+    jparse.parse(jsonString);
+    std::cout << jparse.dump() << std::endl;
+    json jp;
+    jp.parse(testString);
+    std::cout << jp.dump() << std::endl;
+    return 0;
+}
