@@ -18,7 +18,6 @@ json::json() {
 }
 json::json(const json& src) {
     type_ = src.type_;
-    key_ = src.key_;
     switch (type_) {
         case JSON_OBJECT:
             object_ = src.object_; break;
@@ -36,13 +35,34 @@ json& json::operator=(const json& src) {
         return * this;
     }
     type_ = src.type_;
-    key_ = src.key_;
     object_ = src.object_;
     array_ = src.array_;
     string_ = src.string_;
     number_ = src.number_;
     return *this;
 }
+json::json(const std::string str) {
+    type_ = JSON_STRING;
+    string_ = str;
+}
+json::json(const char* str) {
+    type_ = JSON_STRING;
+    const char* p = str;
+    while (*p != '\0') {
+        string_ += *p ++;
+    }
+}
+json::json(double num) {
+    type_ = JSON_NUMBER;
+    number_ = num;
+}
+json::json(bool b) {
+    type_ = b ? JSON_TRUE : JSON_FALSE;
+}
+
+
+
+
 
 
 
@@ -236,11 +256,12 @@ json::jsonError json::parseString(parseContext& context) {
     return ret;
 }
 json::jsonError json::parseArray(parseContext& context) {
+    setArray();
     context.curPass(); // '['
     parseWhitespace(context);
     if (context.cur() == ']') {
         context.curPass();
-        setArray();
+        // setArray();
         return JSON_PARSE_OK;
     }
     jsonError ret;
@@ -258,21 +279,23 @@ json::jsonError json::parseArray(parseContext& context) {
             parseWhitespace(context);
         } else if (context.cur() == ']') {
             context.curPass();
-            setArray();
+            // setArray();
             return JSON_PARSE_OK;
         } else {
             ret = JSON_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
             break;
         }
     }
+    setNull();
     return ret;
 }
 json::jsonError json::parseObject(parseContext& context) {
+    setObject();
     context.curPass(); // '{'
     parseWhitespace(context);
     if (context.cur() == '}') {
         context.curPass();
-        setObject();
+        // setObject();
         return JSON_PARSE_OK;
     }
     jsonError ret;
@@ -286,6 +309,7 @@ json::jsonError json::parseObject(parseContext& context) {
         std::string key;
         ret = parseStringRaw(context, key);
         if (ret != JSON_PARSE_OK) {
+            // 
             break;
         }
         parseWhitespace(context);
@@ -307,7 +331,7 @@ json::jsonError json::parseObject(parseContext& context) {
             parseWhitespace(context);
         } else if (context.cur() == '}') {
             context.curPass();
-            setObject();
+            // setObject();
             return JSON_PARSE_OK;
         } else {
             ret = JSON_PARSE_MISS_COMMA_OR_CURLY_BRACKET;
@@ -539,52 +563,37 @@ void json::insertObjectElement(std::string key, json& j) {
 
 
 
-#include <iostream>
+// #include <iostream>
 
-// test
-int main() {
+// // test
+// int main() {
 
-    json j;
+//     json j;
 
-    json jtrue;
-    jtrue.setBoolean(true);
+//     json jtrue(true);
+//     json jfalse(false);
+//     json jstr("testString");
+//     json jnum(12.3456789);
+
+//     json jarr;
+//     jarr.setArray();
+//     jarr.pushbackArray(jtrue);
+//     jarr.pushbackArray(jfalse);
     
-    json jfalse;
-    jfalse.setBoolean(false);
+//     json jobj;
+//     jobj.setObject();
 
-    json jstr;
-    jstr.setString("testString");
-
-    json jnum;
-    jnum.setNumber(12.3424446453766);
-
-    json jarr;
-    jarr.setArray();
-    jarr.pushbackArray(jtrue);
-    jarr.pushbackArray(jfalse);
-    
-    json jobj;
-    jobj.setObject();
-
-    j.setObject();
-    j.insertObjectElement("jtrue", jtrue);
-    j.insertObjectElement("jfalse", jfalse);
-    j.insertObjectElement("jstr", jstr);
-    j.insertObjectElement("jarr", jarr);
-    j.insertObjectElement("jnum", jnum);
-    j.insertObjectElement("jobj", jobj);
+//     j.setObject();
+//     j.insertObjectElement("jtrue", jtrue);
+//     j.insertObjectElement("jfalse", jfalse);
+//     j.insertObjectElement("jstr", jstr);
+//     j.insertObjectElement("jarr", jarr);
+//     j.insertObjectElement("jnum", jnum);
+//     j.insertObjectElement("jobj", jobj);
 
 
 
-    std::cout << j.dump() << std::endl;
+//     std::cout << j.dump() << std::endl;
 
-    std::string testString = "true";
-    std::string jsonString = j.dump();
-    json jparse;
-    jparse.parse(jsonString);
-    std::cout << jparse.dump() << std::endl;
-    json jp;
-    jp.parse(testString);
-    std::cout << jp.dump() << std::endl;
-    return 0;
-}
+//     return 0;
+// }

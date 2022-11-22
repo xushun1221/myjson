@@ -96,7 +96,6 @@ namespace xushun {
 
         private: // json value
             jsonType type_;
-            std::string key_;
             
             std::map<std::string, json> object_; // JSON_OBJECT
             std::vector<json> array_;  // JSON_ARRAY
@@ -106,6 +105,10 @@ namespace xushun {
             json();
             json(const json& src);
             json& operator=(const json& src);
+            json(const std::string str);
+            json(const char* str);
+            json(double num);
+            json(bool b);
 
             jsonType getType();
             bool isEqual(const json& rhs);
