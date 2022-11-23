@@ -107,6 +107,7 @@ namespace xushun {
             json(const json& src);
             json& operator=(const json& src);
             json(const std::string& str);
+            json(const char* str);
             json(double num);
             json(bool b);
 
@@ -198,6 +199,10 @@ namespace xushun {
     json::json(const std::string& str) {
         type_ = JSON_STRING;
         string_ = str;
+    }
+    json::json(const char* str) {
+        type_ = JSON_STRING;
+        string_ = std::string(str);
     }
     json::json(double num) {
         type_ = JSON_NUMBER;
