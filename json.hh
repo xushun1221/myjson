@@ -142,6 +142,10 @@ namespace xushun {
             bool operator==(const std::vector<T>& vec);
             template<typename T>
             bool operator==(const std::map<std::string,T>& mp);
+            // operator type()
+            operator std::string();
+            operator double();
+            operator bool();
             // value access
             jsonType getType();
             void setNull();
@@ -748,6 +752,24 @@ namespace xushun {
     template<typename T>
     bool json::operator==(const std::map<std::string,T>& mp) {
         return isEqual(mp);
+    }
+    json::operator std::string() {
+        if (getType() == json::JSON_STRING) {
+            return getString();
+        }
+        return std::string("");
+    }
+    json::operator double() {
+        if (getType() == json::JSON_NUMBER) {
+            return getNumber();
+        }
+        return 0.0;
+    }
+    json::operator bool() {
+        if (getType() == json::JSON_TRUE) {
+            return true;
+        }
+        return false;
     }
 
 

@@ -402,7 +402,21 @@ TEST(AccessTest, AccessObject) {
 }
 
 
-
+TEST(AccessTest, OperatorType) {
+    using json = xushun::json;
+    json j;
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("\"abc\""));
+    EXPECT_EQ("abc", std::string(j));
+    EXPECT_NE("abcd", std::string(j));
+    j.setNull();
+    j.setNumber(123.456789);
+    EXPECT_DOUBLE_EQ(123.456789, double(j));
+    j.setNull();
+    j.setBoolean(true);
+    EXPECT_EQ(true, bool(j));
+    j.setBoolean(false);
+    EXPECT_EQ(false, bool(j));
+}
 
 
 
