@@ -725,6 +725,9 @@ namespace xushun {
     void json::eraseArrayElement(int index, int count) {
         array_.erase(array_.begin() + index, array_.begin() + index + count);
     }
+    json& json::operator[](int index) {
+        return getArrayElement(index);
+    }
 
 
     // object
@@ -749,6 +752,13 @@ namespace xushun {
     }
     void json::insertObjectElement(const std::string& key, json& j) {
         object_.insert({key, j});
+    }
+    json& json::operator[](const std::string& key) {
+        if (!existObjectElement(key)) {
+            json j;
+            insertObjectElement(key, j);
+        }
+        return findObjectElement(key);
     }
 
 
