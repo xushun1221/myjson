@@ -163,9 +163,9 @@ namespace xushun {
             int getArraySize();
             void clearArray();
             json& getArrayElement(int index);
-            void pushbackArray(const json& j);
+            void pushbackArray(const json j);
             void popbackArray();
-            void insertArrayElement(int index, json& j);
+            void insertArrayElement(int index, json j);
             void eraseArrayElement(int index, int count);
             json& operator[](int index); // []fetch
             // object
@@ -175,8 +175,10 @@ namespace xushun {
             bool existObjectElement(const std::string& key);
             json& findObjectElement(const std::string& key);
             void eraseObjectElement(const std::string& key);
-            void insertObjectElement(const std::string& key, const json& j);
+            void insertObjectElement(const std::string& key, const json j);
             json& operator[](const std::string& key); // []fetch
+            json& operator[](const char* key);
+
     };
 
 
@@ -834,25 +836,19 @@ namespace xushun {
     json& json::getArrayElement(int index) {
         return array_[index];
     }
-    void json::pushbackArray(const json& j) {
+    void json::pushbackArray(const json j) {
         array_.push_back(j);
     }
     void json::popbackArray() {
         array_.pop_back();
     }
-    void json::insertArrayElement(int index, json& j) {
+    void json::insertArrayElement(int index, json j) {
         array_.insert(array_.begin() + index, j);
     }
     void json::eraseArrayElement(int index, int count) {
         array_.erase(array_.begin() + index, array_.begin() + index + count);
     }
     json& json::operator[](int index) {
-        if (getType() == json::JSON_NULL) {
-            setArray();
-        } else if (getType() != json::JSON_ARRAY) {
-            json j;
-            return j;
-        }
         return getArrayElement(index);
     }
 
@@ -877,23 +873,28 @@ namespace xushun {
     void json::eraseObjectElement(const std::string& key) {
         object_.erase(key);
     }
-    void json::insertObjectElement(const std::string& key, const json& j) {
+    void json::insertObjectElement(const std::string& key, const json j) {
         object_.insert({key, j});
     }
     json& json::operator[](const std::string& key) {
-        if (getType() == json::JSON_NULL) {
+        if (getType() != json::JSON_OBJECT) {
             setObject();
-        } else if (getType() != json::JSON_OBJECT) {
-            json j;
-            return j;
         }
         if (!existObjectElement(key)) {
-            json j;
-            insertObjectElement(key, j);
+            insertObjectElement(key, json());
         }
         return findObjectElement(key);
     }
-
+    json& json::operator[](const char* key) {
+        if (getType() != json::JSON_OBJECT) {
+            setObject();
+        }
+        std::string k(key);
+        if (!existObjectElement(k)) {
+            insertObjectElement(k, json());
+        }
+        return findObjectElement(k);
+    }
 
 
 
