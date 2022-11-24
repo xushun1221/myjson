@@ -847,6 +847,12 @@ namespace xushun {
         array_.erase(array_.begin() + index, array_.begin() + index + count);
     }
     json& json::operator[](int index) {
+        if (getType() == json::JSON_NULL) {
+            setArray();
+        } else if (getType() != json::JSON_ARRAY) {
+            json j;
+            return j;
+        }
         return getArrayElement(index);
     }
 
@@ -875,6 +881,12 @@ namespace xushun {
         object_.insert({key, j});
     }
     json& json::operator[](const std::string& key) {
+        if (getType() == json::JSON_NULL) {
+            setObject();
+        } else if (getType() != json::JSON_OBJECT) {
+            json j;
+            return j;
+        }
         if (!existObjectElement(key)) {
             json j;
             insertObjectElement(key, j);
