@@ -22,7 +22,7 @@
         EXPECT_EQ(equality, j1.isEqual(j2));\
     } while(0)
 
-TEST(TestAccess, Equal) {
+TEST(AccessTest, Equal) {
     using json = xushun::json;
     TEST_EQUAL("true", "true", true);
     TEST_EQUAL("true", "false", false);
@@ -49,7 +49,7 @@ TEST(TestAccess, Equal) {
     TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":[]}}}", false);
 }
 
-TEST(TestAccess, Constructor) {
+TEST(AccessTest, Constructor) {
     using json = xushun::json;
     // copy
     json j;
@@ -77,7 +77,7 @@ TEST(TestAccess, Constructor) {
     EXPECT_EQ(json::JSON_NULL, j1.getType());
 }
 
-TEST(TestAccess, AccessNull) {
+TEST(AccessTest, AccessNull) {
     using json = xushun::json;
     json j;
     j.setString("abc");
@@ -85,7 +85,7 @@ TEST(TestAccess, AccessNull) {
     EXPECT_EQ(json::JSON_NULL, j.getType());
 }
 
-TEST(TestAccess, AccessBoolean) {
+TEST(AccessTest, AccessBoolean) {
     using json = xushun::json;
     json j;
     j.setString("abc");
@@ -97,7 +97,7 @@ TEST(TestAccess, AccessBoolean) {
     EXPECT_EQ(false, j.getBoolean());
 }
 
-TEST(TestAccess, AccessNumber) {
+TEST(AccessTest, AccessNumber) {
     using json = xushun::json;
     json j;
     j.setString("abc");
@@ -106,7 +106,7 @@ TEST(TestAccess, AccessNumber) {
     EXPECT_DOUBLE_EQ(123.456789, j.getNumber());
 }
 
-TEST(TestAccess, AccessString) {
+TEST(AccessTest, AccessString) {
     using json = xushun::json;
     json j;
     j.setString("");
@@ -117,7 +117,7 @@ TEST(TestAccess, AccessString) {
     EXPECT_EQ("hello", j.getString());
 }
 
-TEST(TestAccess, AccessArray) {
+TEST(AccessTest, AccessArray) {
     using json = xushun::json;
     json a;
     for (int i = 0; i <= 5; ++ i) {
@@ -167,7 +167,7 @@ TEST(TestAccess, AccessArray) {
     EXPECT_EQ(0, a.getArraySize());
 }
 
-TEST(TestAccess, AccessObject) {
+TEST(AccessTest, AccessObject) {
     using json = xushun::json;
     json o;
     for (int i = 0; i <= 5; ++ i) {
