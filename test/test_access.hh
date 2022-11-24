@@ -49,6 +49,106 @@ TEST(AccessTest, Equal) {
     TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":[]}}}", false);
 }
 
+TEST(AccessTest, EqualForAll) {
+    using json = xushun::json;
+    json j;
+    // string
+    j.setString("abc");
+    EXPECT_EQ(true, j.isEqual(std::string("abc")));
+    EXPECT_EQ(false, j.isEqual(std::string("abcd")));
+    j.setNull();
+    // const char*
+    j.setString("abc");
+    EXPECT_EQ(true, j.isEqual("abc"));
+    EXPECT_EQ(false, j.isEqual("abcd"));
+    j.setNull();
+    // number double
+    j.setNumber(123.456789);
+    EXPECT_EQ(true, j.isEqual(123.456789));
+    EXPECT_EQ(false, j.isEqual(123.45678));
+    j.setNull();
+    // boolean
+    j.setBoolean(true);
+    EXPECT_EQ(true, j.isEqual(true));
+    EXPECT_EQ(false, j.isEqual(false));
+    j.setBoolean(false);
+    EXPECT_EQ(true, j.isEqual(false));
+    EXPECT_EQ(false, j.isEqual(true));
+    j.setNull();
+    // array vector
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("[1,2,3]"));
+    std::vector<double> vec{1,2,3};
+    EXPECT_EQ(true, j.isEqual(vec));
+    std::vector<double> vec1{1,2,3,4};
+    EXPECT_EQ(false, j.isEqual(vec1));
+    std::vector<double> vec2{1,2,4};
+    EXPECT_EQ(false, j.isEqual(vec2));
+    std::vector<std::string> vec3{"1", "2", "3"};
+    EXPECT_EQ(false, j.isEqual(vec3));
+    j.setNull();
+    // object map
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("{\"a\":1,\"b\":2}"));
+    std::map<std::string,double> mp{{"a", 1}, {"b", 2}};
+    EXPECT_EQ(true, j.isEqual(mp));
+    std::map<std::string,double> mp1{{"a", 1}, {"b", 2}, {"c", 3}};
+    EXPECT_EQ(false, j.isEqual(mp1));
+    std::map<std::string,double> mp2{{"a", 1}, {"b", 3}};
+    EXPECT_EQ(false, j.isEqual(mp2));
+    std::map<std::string,std::string> mp3{{"a", "1"}, {"b", "2"}};
+    EXPECT_EQ(false, j.isEqual(mp3));
+    j.setNull();
+}
+
+TEST(AccessTest, OperatorEqual) {
+    using json = xushun::json;
+    json j;
+    // string
+    j.setString("abc");
+    EXPECT_EQ(true, j == (std::string("abc")));
+    EXPECT_EQ(false, j == (std::string("abcd")));
+    j.setNull();
+    // const char*
+    j.setString("abc");
+    EXPECT_EQ(true, j == ("abc"));
+    EXPECT_EQ(false, j == ("abcd"));
+    j.setNull();
+    // number double
+    j.setNumber(123.456789);
+    EXPECT_EQ(true, j == (123.456789));
+    EXPECT_EQ(false, j == (123.45678));
+    j.setNull();
+    // boolean
+    j.setBoolean(true);
+    EXPECT_EQ(true, j == (true));
+    EXPECT_EQ(false, j == (false));
+    j.setBoolean(false);
+    EXPECT_EQ(true, j == (false));
+    EXPECT_EQ(false, j == (true));
+    j.setNull();
+    // array vector
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("[1,2,3]"));
+    std::vector<double> vec{1,2,3};
+    EXPECT_EQ(true, j == (vec));
+    std::vector<double> vec1{1,2,3,4};
+    EXPECT_EQ(false, j == (vec1));
+    std::vector<double> vec2{1,2,4};
+    EXPECT_EQ(false, j == (vec2));
+    std::vector<std::string> vec3{"1", "2", "3"};
+    EXPECT_EQ(false, j == (vec3));
+    j.setNull();
+    // object map
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("{\"a\":1,\"b\":2}"));
+    std::map<std::string,double> mp{{"a", 1}, {"b", 2}};
+    EXPECT_EQ(true, j == (mp));
+    std::map<std::string,double> mp1{{"a", 1}, {"b", 2}, {"c", 3}};
+    EXPECT_EQ(false, j == (mp1));
+    std::map<std::string,double> mp2{{"a", 1}, {"b", 3}};
+    EXPECT_EQ(false, j == (mp2));
+    std::map<std::string,std::string> mp3{{"a", "1"}, {"b", "2"}};
+    EXPECT_EQ(false, j == (mp3));
+    j.setNull();
+}
+
 TEST(AccessTest, Constructor) {
     using json = xushun::json;
     // copy
@@ -71,10 +171,67 @@ TEST(AccessTest, Constructor) {
     // boolean
     EXPECT_EQ(json::JSON_PARSE_OK, j.parse("true"));
     EXPECT_EQ(true, j.isEqual(json(true)));
-    j.setNull(); 
+    j.setNull();
     // default null
     json j1;
     EXPECT_EQ(json::JSON_NULL, j1.getType());
+    // array vector
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("[1,2,3]"));
+    std::vector<double> vec{1,2,3};
+    json j2(vec);
+    EXPECT_EQ(true, j.isEqual(j2));
+    j.setNull();
+    // object vector
+    EXPECT_EQ(json::JSON_PARSE_OK, j.parse("{\"a\":1,\"b\":2}"));
+    std::map<std::string,double> mp{{"a", 1}, {"b", 2}};
+    json j3(mp);
+    EXPECT_EQ(true, j.isEqual(j3));
+    j.setNull();
+}
+
+TEST(AccessTest, OperatorAssign) {
+    using json = xushun::json;
+    json j;
+    // object
+    j = json("hello world");
+    EXPECT_EQ(json::JSON_STRING, j.getType());
+    j.setNull();
+    // string
+    j = std::string("hello world");
+    EXPECT_EQ(json::JSON_STRING, j.getType());
+    EXPECT_EQ("hello world", j.getString());
+    j.setNull();
+    // const char*
+    j = "hello world";
+    EXPECT_EQ(json::JSON_STRING, j.getType());
+    EXPECT_EQ("hello world", j.getString());
+    j.setNull();
+    // number double
+    j = 123.456789;
+    EXPECT_EQ(json::JSON_NUMBER, j.getType());
+    EXPECT_DOUBLE_EQ(123.456789, j.getNumber());
+    j.setNull();
+    // boolean
+    j = true;
+    EXPECT_EQ(json::JSON_TRUE, j.getType());
+    j = false;
+    EXPECT_EQ(json::JSON_FALSE, j.getType());
+    j.setNull();
+    // array vector
+    j = std::vector<double>{1,2,3};
+    EXPECT_EQ(json::JSON_ARRAY, j.getType());
+    EXPECT_EQ(3, j.getArraySize());
+    EXPECT_DOUBLE_EQ(1, j.getArrayElement(0).getNumber());
+    EXPECT_DOUBLE_EQ(2, j.getArrayElement(1).getNumber());
+    EXPECT_DOUBLE_EQ(3, j.getArrayElement(2).getNumber());
+    j.setNull();
+    // object map
+    j = std::map<std::string,double>{{"1", 1}, {"2", 2}};
+    EXPECT_EQ(json::JSON_OBJECT, j.getType());
+    EXPECT_EQ(2, j.getObjectSize());
+    EXPECT_DOUBLE_EQ(1, j.findObjectElement("1").getNumber());
+    EXPECT_DOUBLE_EQ(2, j.findObjectElement("2").getNumber());
+    j.setNull();
 }
 
 TEST(AccessTest, AccessNull) {
@@ -165,6 +322,21 @@ TEST(AccessTest, AccessArray) {
     }
     a.clearArray();
     EXPECT_EQ(0, a.getArraySize());
+    // operator[]
+    for (int i = 0; i <= 5; ++ i) {
+        a.setArray();
+        EXPECT_EQ(json::JSON_ARRAY, a.getType());
+        EXPECT_EQ(0, a.getArraySize());
+        for (int j = 0; j < 10; ++ j) {
+            json e;
+            e.setNumber(j);
+            a.pushbackArray(e);
+        }
+        EXPECT_EQ(10, a.getArraySize());
+        for (int j = 0; j < 10; ++ j) {
+            EXPECT_DOUBLE_EQ((double)j, a[j].getNumber());
+        }
+    }
 }
 
 TEST(AccessTest, AccessObject) {
@@ -206,6 +378,27 @@ TEST(AccessTest, AccessObject) {
     }
     o.clearObject();
     EXPECT_EQ(0, o.getObjectSize());
+    // operator[]
+    for (int i = 0; i <= 5; ++ i) {
+        o.setObject();
+        EXPECT_EQ(json::JSON_OBJECT, o.getType());
+        EXPECT_EQ(0, o.getObjectSize());
+        for (int j = 0; j < 10; ++ j) {
+            std::string key = "a";
+            key.at(0) += j;
+            json v;
+            v.setNumber(j);
+            o[key] = v;
+        }
+        EXPECT_EQ(10, o.getObjectSize());
+        for (int j = 0; j < 10; ++ j) {
+            std::string key = "a";
+            key.at(0) += j;
+            EXPECT_EQ(true, o.existObjectElement(key));
+            json v = o[key];
+            EXPECT_DOUBLE_EQ((double)j, v.getNumber());
+        }
+    }
 }
 
 

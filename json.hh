@@ -171,7 +171,7 @@ namespace xushun {
             bool existObjectElement(const std::string& key);
             json& findObjectElement(const std::string& key);
             void eraseObjectElement(const std::string& key);
-            void insertObjectElement(const std::string& key, json& j);
+            void insertObjectElement(const std::string& key, const json& j);
             json& operator[](const std::string& key); // []fetch
     };
 
@@ -849,7 +849,7 @@ namespace xushun {
     void json::eraseObjectElement(const std::string& key) {
         object_.erase(key);
     }
-    void json::insertObjectElement(const std::string& key, json& j) {
+    void json::insertObjectElement(const std::string& key, const json& j) {
         object_.insert({key, j});
     }
     json& json::operator[](const std::string& key) {
