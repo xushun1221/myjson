@@ -124,7 +124,7 @@ namespace xushun {
             void setNumber(double n);
             // string
             std::string getString();
-            void setString(std::string s);
+            void setString(const std::string& s);
             // array
             void setArray();
             int getArraySize();
@@ -138,10 +138,10 @@ namespace xushun {
             void setObject();
             int getObjectSize();
             void clearObject();
-            bool existObjectElement(std::string key);
-            json& findObjectElement(std::string key);
-            void eraseObjectElement(std::string key);
-            void insertObjectElement(std::string key, json& j);
+            bool existObjectElement(const std::string& key);
+            json& findObjectElement(const std::string& key);
+            void eraseObjectElement(const std::string& key);
+            void insertObjectElement(const std::string& key, json& j);
     };
 
 
@@ -655,7 +655,7 @@ namespace xushun {
         }
         return string_;
     }
-    void json::setString(std::string s) {
+    void json::setString(const std::string& s) {
         setNull();
         type_ = JSON_STRING;
         string_ = s;
@@ -701,16 +701,16 @@ namespace xushun {
     void json::clearObject() {
         object_.clear();
     }
-    bool json::existObjectElement(std::string key) {
+    bool json::existObjectElement(const std::string& key) {
         return object_.find(key) != object_.end();
     }
-    json& json::findObjectElement(std::string key) { // assert
+    json& json::findObjectElement(const std::string& key) { // assert
         return object_[key];
     }
-    void json::eraseObjectElement(std::string key) {
+    void json::eraseObjectElement(const std::string& key) {
         object_.erase(key);
     }
-    void json::insertObjectElement(std::string key, json& j) {
+    void json::insertObjectElement(const std::string& key, json& j) {
         object_.insert({key, j});
     }
 

@@ -78,27 +78,134 @@ TEST(TestAccess, Constructor) {
 }
 
 TEST(TestAccess, AccessNull) {
-
+    using json = xushun::json;
+    json j;
+    j.setString("abc");
+    j.setNull();
+    EXPECT_EQ(json::JSON_NULL, j.getType());
 }
 
 TEST(TestAccess, AccessBoolean) {
-    
+    using json = xushun::json;
+    json j;
+    j.setString("abc");
+    j.setBoolean(true);
+    EXPECT_EQ(json::JSON_TRUE, j.getType());
+    EXPECT_EQ(true, j.getBoolean());
+    j.setBoolean(false);
+    EXPECT_EQ(json::JSON_FALSE, j.getType());
+    EXPECT_EQ(false, j.getBoolean());
 }
 
 TEST(TestAccess, AccessNumber) {
-    
+    using json = xushun::json;
+    json j;
+    j.setString("abc");
+    j.setNumber(123.456789);
+    EXPECT_EQ(json::JSON_NUMBER, j.getType());
+    EXPECT_DOUBLE_EQ(123.456789, j.getNumber());
 }
 
 TEST(TestAccess, AccessString) {
-    
+    using json = xushun::json;
+    json j;
+    j.setString("");
+    EXPECT_EQ(json::JSON_STRING, j.getType());
+    EXPECT_EQ("", j.getString());
+    j.setString("hello");
+    EXPECT_EQ(json::JSON_STRING, j.getType());
+    EXPECT_EQ("hello", j.getString());
 }
 
 TEST(TestAccess, AccessArray) {
-    
+    using json = xushun::json;
+    json a;
+    for (int i = 0; i <= 5; ++ i) {
+        a.setArray();
+        EXPECT_EQ(json::JSON_ARRAY, a.getType());
+        EXPECT_EQ(0, a.getArraySize());
+        for (int j = 0; j < 10; ++ j) {
+            json e;
+            e.setNumber(j);
+            a.pushbackArray(e);
+        }
+        EXPECT_EQ(10, a.getArraySize());
+        for (int j = 0; j < 10; ++ j) {
+            EXPECT_DOUBLE_EQ((double)j, a.getArrayElement(j).getNumber());
+        }
+    }
+    a.popbackArray();
+    EXPECT_EQ(9, a.getArraySize());
+    for (int j = 0; j < 9; ++ j) {
+        EXPECT_DOUBLE_EQ((double)j, a.getArrayElement(j).getNumber());
+    }
+    a.eraseArrayElement(4, 0);
+    EXPECT_EQ(9, a.getArraySize());
+    for (int j = 0; j < 9; ++ j) {
+        EXPECT_DOUBLE_EQ((double)j, a.getArrayElement(j).getNumber());
+    }
+    a.eraseArrayElement(8, 1);
+    EXPECT_EQ(8, a.getArraySize());
+    for (int j = 0; j < 8; ++ j) {
+        EXPECT_DOUBLE_EQ((double)j, a.getArrayElement(j).getNumber());
+    }
+    a.eraseArrayElement(0, 2);
+    EXPECT_EQ(6, a.getArraySize());
+    for (int j = 0; j < 6; ++ j) {
+        EXPECT_DOUBLE_EQ((double)j + 2, a.getArrayElement(j).getNumber());
+    }
+    for (int j = 0; j < 2; ++ j) {
+        json e;
+        e.setNumber(j);
+        a.insertArrayElement(j, e);
+    }
+    EXPECT_EQ(8, a.getArraySize());
+    for (int j = 0; j < 8; ++ j) {
+        EXPECT_DOUBLE_EQ((double)j, a.getArrayElement(j).getNumber());
+    }
+    a.clearArray();
+    EXPECT_EQ(0, a.getArraySize());
 }
 
 TEST(TestAccess, AccessObject) {
-    
+    using json = xushun::json;
+    json o;
+    for (int i = 0; i <= 5; ++ i) {
+        o.setObject();
+        EXPECT_EQ(json::JSON_OBJECT, o.getType());
+        EXPECT_EQ(0, o.getObjectSize());
+        for (int j = 0; j < 10; ++ j) {
+            std::string key = "a";
+            key.at(0) += j;
+            json v;
+            v.setNumber(j);
+            o.insertObjectElement(key, v);
+        }
+        EXPECT_EQ(10, o.getObjectSize());
+        for (int j = 0; j < 10; ++ j) {
+            std::string key = "a";
+            key.at(0) += j;
+            EXPECT_EQ(true, o.existObjectElement(key));
+            json v = o.findObjectElement(key);
+            EXPECT_DOUBLE_EQ((double)j, v.getNumber());
+        }
+    }
+    EXPECT_EQ(10, o.getObjectSize());
+    EXPECT_EQ(true, o.existObjectElement("j"));
+    o.eraseObjectElement("j");
+    EXPECT_EQ(false, o.existObjectElement("j"));
+    EXPECT_EQ(9, o.getObjectSize());
+    EXPECT_EQ(true, o.existObjectElement("a"));
+    o.eraseObjectElement("a");
+    EXPECT_EQ(false, o.existObjectElement("a"));
+    EXPECT_EQ(8, o.getObjectSize());
+    for (int i = 0; i < 8; ++ i) {
+        std::string key = "a";
+        key.at(0) += 1 + i;
+        EXPECT_DOUBLE_EQ((double)i + 1, o.findObjectElement(key).getNumber());
+    }
+    o.clearObject();
+    EXPECT_EQ(0, o.getObjectSize());
 }
 
 
