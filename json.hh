@@ -123,10 +123,27 @@ namespace xushun {
             json& operator=(const std::vector<T>& vec);
             template<typename T>
             json& operator=(const std::map<std::string,T>& mp);
+            // equal and operator==
+            bool isEqual(const json& rhs);
+            bool isEqual(const std::string& str);
+            bool isEqual(const char* str);
+            bool isEqual(double num);
+            bool isEqual(bool b);
+            template<typename T>
+            bool isEqual(const std::vector<T>& vec);
+            template<typename T>
+            bool isEqual(const std::map<std::string,T>& mp);
+            bool operator==(const json& rhs);
+            bool operator==(const std::string& str);
+            bool operator==(const char* str);
+            bool operator==(double num);
+            bool operator==(bool b);
+            template<typename T>
+            bool operator==(const std::vector<T>& vec);
+            template<typename T>
+            bool operator==(const std::map<std::string,T>& mp);
             // value access
             jsonType getType();
-            bool isEqual(const json& rhs);
-            bool operator==(const json& rhs);
             void setNull();
             // bool
             bool getBoolean();
@@ -645,9 +662,7 @@ namespace xushun {
     }
 
 
-    json::jsonType json::getType() {
-        return type_;
-    }
+    // equal and operator==
     bool json::isEqual(const json& rhs) {
         if (type_ != rhs.type_) { return false; }
         switch (type_) {
@@ -672,8 +687,74 @@ namespace xushun {
                 return true;
         }
     }
+    bool json::isEqual(const std::string& str) {
+        if (getType() != json::JSON_STRING) { return false; }
+        return string_ == str;
+    }
+    bool json::isEqual(const char* str) {
+        if (getType() != json::JSON_STRING) { return false; }
+        return string_ == std::string(str);
+    }
+    bool json::isEqual(double num) {
+        if (getType() != json::JSON_NUMBER) { return false;}
+        return number_ == num;
+    }
+    bool json::isEqual(bool b) {
+        if (b) { return getType() == json::JSON_TRUE; }
+        else   { return getType() == json::JSON_FALSE; }    
+    }
+    template<typename T>
+    bool json::isEqual(const std::vector<T>& vec) {
+        if (getType() != json::JSON_ARRAY) { return false; }
+        if (vec.size() != getArraySize()) { return false; }
+        for (int i = 0; i < vec.size(); ++ i) {
+            if (!getArrayElement(i).isEqual(vec[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    template<typename T>
+    bool json::isEqual(const std::map<std::string,T>& mp) {
+        if (getType() != json::JSON_OBJECT) { return false; }
+        if (mp.size() != getObjectSize()) { return false; }
+        for (auto itr = mp.begin(); itr != mp.end(); ++ itr) {
+            if (!existObjectElement(itr->first)) { return false; }
+            if (!findObjectElement(itr->first).isEqual(itr->second)) {
+                return false;
+            }
+        }
+        return true;
+    }
     bool json::operator==(const json& rhs) {
         return isEqual(rhs);
+    }
+    bool json::operator==(const std::string& str) {
+        return isEqual(str);
+    }
+    bool json::operator==(const char* str) {
+        return isEqual(str);
+    }
+    bool json::operator==(double num) {
+        return isEqual(num);
+    }
+    bool json::operator==(bool b) {
+        return isEqual(b);
+    }
+    template<typename T>
+    bool json::operator==(const std::vector<T>& vec) {
+        return isEqual(vec);
+    }
+    template<typename T>
+    bool json::operator==(const std::map<std::string,T>& mp) {
+        return isEqual(mp);
+    }
+
+
+
+    // value access
+    json::jsonType json::getType() {
+        return type_;
     }
     void json::setNull() {
         type_ = JSON_NULL;
