@@ -110,6 +110,10 @@ namespace xushun {
             json(const char* str);
             json(double num);
             json(bool b);
+            template<typename T>
+            json(const std::vector<T>& vec);
+            template<typename T>
+            json(const std::map<std::string,T>& mp);
             json& operator=(const json& src);
             json& operator=(const std::string& str);
             json& operator=(const char* str);
@@ -209,6 +213,20 @@ namespace xushun {
     }
     json::json(bool b) {
         type_ = b ? JSON_TRUE : JSON_FALSE;
+    }
+    template<typename T>
+    json::json(const std::vector<T>& vec) {
+        setArray();
+        for (T t : vec) {
+            pushbackArray(json(t));
+        }
+    }
+    template<typename T>
+    json::json(const std::map<std::string,T>& mp) {
+        setObject();
+        for (auto itr = mp.begin(); itr != mp.end(); ++ itr) {
+            insertObjectElement(itr->first, itr->second);
+        }
     }
     json& json::operator=(const json& src) {
         if (&src == this) {
