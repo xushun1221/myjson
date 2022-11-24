@@ -103,19 +103,27 @@ namespace xushun {
             std::string string_;       // JSON_STRING
             double number_;            // JSON_NUMBER
         public:
+            // constructor and operator=
             json();
             json(const json& src);
-            json& operator=(const json& src);
             json(const std::string& str);
             json(const char* str);
             json(double num);
             json(bool b);
-
+            json& operator=(const json& src);
+            json& operator=(const std::string& str);
+            json& operator=(const char* str);
+            json& operator=(double num);
+            json& operator=(bool b);
+            template<typename T>
+            json& operator=(const std::vector<T>& vec);
+            template<typename T>
+            json& operator=(const std::map<std::string,T>& mp);
+            // value access
             jsonType getType();
             bool isEqual(const json& rhs);
             bool operator==(const json& rhs);
             void setNull();
-            
             // bool
             bool getBoolean();
             void setBoolean(bool b);
@@ -130,10 +138,11 @@ namespace xushun {
             int getArraySize();
             void clearArray();
             json& getArrayElement(int index);
-            void pushbackArray(json& j);
+            void pushbackArray(const json& j);
             void popbackArray();
             void insertArrayElement(int index, json& j);
             void eraseArrayElement(int index, int count);
+            json& operator[](int index); // []fetch
             // object
             void setObject();
             int getObjectSize();
@@ -142,6 +151,7 @@ namespace xushun {
             json& findObjectElement(const std::string& key);
             void eraseObjectElement(const std::string& key);
             void insertObjectElement(const std::string& key, json& j);
+            json& operator[](const std::string& key); // []fetch
     };
 
 
@@ -167,7 +177,7 @@ namespace xushun {
 
 
 
-
+    // constructor and operator=
     json::json() {
         type_ = JSON_NULL;
     }
@@ -185,17 +195,6 @@ namespace xushun {
             default: break;
         }
     }
-    json& json::operator=(const json& src) {
-        if (&src == this) {
-            return * this;
-        }
-        type_ = src.type_;
-        object_ = src.object_;
-        array_ = src.array_;
-        string_ = src.string_;
-        number_ = src.number_;
-        return *this;
-    }
     json::json(const std::string& str) {
         type_ = JSON_STRING;
         string_ = str;
@@ -211,10 +210,49 @@ namespace xushun {
     json::json(bool b) {
         type_ = b ? JSON_TRUE : JSON_FALSE;
     }
-
-
-
-
+    json& json::operator=(const json& src) {
+        if (&src == this) {
+            return * this;
+        }
+        type_ = src.type_;
+        object_ = src.object_;
+        array_ = src.array_;
+        string_ = src.string_;
+        number_ = src.number_;
+        return *this;
+    }
+    json& json::operator=(const std::string& str) {
+        setString(str);
+        return *this;
+    }
+    json& json::operator=(const char* str) {
+        setString(std::string(str));
+        return *this;
+    }
+    json& json::operator=(double num) {
+        setNumber(num);
+        return *this;
+    }
+    json& json::operator=(bool b) {
+        setBoolean(b);
+        return *this;
+    }
+    template<typename T>
+    json& json::operator=(const std::vector<T>& vec) {
+        setArray();
+        for (T t : vec) {
+            pushbackArray(json(t));
+        }
+        return *this;
+    }
+    template<typename T>
+    json& json::operator=(const std::map<std::string,T>& mp) {
+        setObject();
+        for (auto itr = mp.begin(); itr != mp.end(); ++ itr) {
+            insertObjectElement(itr->first, itr->second);
+        }
+        return *this;
+    }
 
 
 
@@ -504,7 +542,6 @@ namespace xushun {
             default:   return parseNumber(context);
         }
     }
-    #include <iostream>
     json::jsonError json::parse(const std::string& jsonString) {
         parseContext context(jsonString);
         setNull();
@@ -676,7 +713,7 @@ namespace xushun {
     json& json::getArrayElement(int index) {
         return array_[index];
     }
-    void json::pushbackArray(json& j) {
+    void json::pushbackArray(const json& j) {
         array_.push_back(j);
     }
     void json::popbackArray() {
